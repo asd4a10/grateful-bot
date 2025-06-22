@@ -1,1 +1,29 @@
+# Environment variables
 .env
+
+# Virtual environment
+venv/
+
+# Firebase credentials
+firebase-creds.json
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+grateful_bot.log
+
+# Database files
+*.db
+grateful_bot.db
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

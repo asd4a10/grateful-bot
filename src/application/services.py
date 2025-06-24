@@ -80,9 +80,9 @@ class GratefulBotService:
         
         # Simple thank you message
         message = (
-            f"Thank you for sharing! 🙏\n\n"
-            f"\"{content}\"\n\n"
-            f"Have a wonderful day! ✨"
+            "Thank you for sharing! 🙏\n"
+            "Your response has been collected ✅\n"
+            "Have a wonderful day! ✨"
         )
         
         return entry, message 

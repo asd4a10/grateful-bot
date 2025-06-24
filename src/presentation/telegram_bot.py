@@ -77,7 +77,7 @@ class GratefulBot:
         except Exception as e:
             logger.error(f"Error processing gratitude response: {e}")
             await update.message.reply_text(
-                "Thank you for sharing! Have a wonderful day! 🌟"
+                "Error processing gratitude response. Please try again"
             )
     
     def run(self):

@@ -3,7 +3,7 @@ Telegram bot presentation layer for the Grateful Bot.
 """
 
 import logging
-from telegram import Update
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
 from ..application.services import GratefulBotService
@@ -20,12 +20,21 @@ class GratefulBot:
         self.application = Application.builder().token(token).build()
         self._setup_handlers()
     
+    def _create_menu_keyboard(self):
+        """Create the persistent menu keyboard."""
+        keyboard = [
+            [KeyboardButton("📝 Show Gratitude")],
+            [KeyboardButton("📊 Statistics")],
+            [KeyboardButton("⚙️ Settings")]
+        ]
+        return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    
     def _setup_handlers(self):
         """Setup bot command and message handlers."""
         # Command handlers
         self.application.add_handler(CommandHandler("start", self.start_command))
         
-        # Message handler for gratitude responses
+        # Message handler for gratitude responses and menu options
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
     
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -42,22 +51,48 @@ class GratefulBot:
                 last_name=user.last_name
             )
             
-            await update.message.reply_text(message)
+            # Send welcome message with persistent menu
+            await update.message.reply_text(
+                message,
+                reply_markup=self._create_menu_keyboard()
+            )
             
         except Exception as e:
             logger.error(f"Error in start command: {e}")
             await update.message.reply_text(
-                "Sorry, something went wrong. Please try again later."
+                "Sorry, something went wrong. Please try again later.",
+                reply_markup=self._create_menu_keyboard()
             )
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle text messages (gratitude responses)."""
+        """Handle text messages (gratitude responses and menu options)."""
         user = update.effective_user
         if not user:
             return
         
         message_text = update.message.text.strip()
         
+        # Handle menu options
+        if message_text == "📝 Show Gratitude":
+            await update.message.reply_text(
+                "This feature is coming soon! 🌟\n\n"
+                "For now, you can simply type your gratitude message and I'll save it for you."
+            )
+            return
+        elif message_text == "📊 Statistics":
+            await update.message.reply_text(
+                "Statistics feature is coming soon! 📈\n\n"
+                "You'll be able to see your gratitude streak, total entries, and more."
+            )
+            return
+        elif message_text == "⚙️ Settings":
+            await update.message.reply_text(
+                "Settings feature is coming soon! 🔧\n\n"
+                "You'll be able to customize your gratitude experience here."
+            )
+            return
+        
+        # Handle gratitude responses (existing logic)
         # Skip if message is too short
         if len(message_text) < 3:
             await update.message.reply_text(

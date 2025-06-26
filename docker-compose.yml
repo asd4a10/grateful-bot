@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  grateful-bot:
+    build: .
+    container_name: grateful-bot-dev
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/src/__pycache__
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-creds.json
+      - PYTHONPATH=/app
+    env_file:
+      - .env
+    command: python main.py
+    restart: unless-stopped
+
+  # Service for running tests
+  test:
+    build: .
+    container_name: grateful-bot-test
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/src/__pycache__
+    environment:
+      - PYTHONPATH=/app
+      - TESTING=1
+    command: pytest -v --cov=src --cov-report=html --cov-report=term
+    profiles:
+      - test
+
+  # Service for TDD development (watch mode)
+  tdd:
+    build: .
+    container_name: grateful-bot-tdd
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/src/__pycache__
+    environment:
+      - PYTHONPATH=/app
+      - TESTING=1
+    command: pytest -v --cov=src -f --tb=short
+    profiles:
+      - tdd

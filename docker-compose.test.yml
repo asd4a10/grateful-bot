@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  test-unit:
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+      - TESTING=1
+    command: pytest tests/unit -v --cov=src/domain --cov=src/application
+
+  test-integration:
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+      - TESTING=1
+    command: pytest tests/integration -v --cov=src/infrastructure
+
+  test-all:
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+      - TESTING=1
+    command: pytest -v --cov=src --cov-report=html --cov-report=term-missing

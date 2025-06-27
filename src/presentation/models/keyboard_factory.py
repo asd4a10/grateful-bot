@@ -13,8 +13,9 @@ class KeyboardFactory:
         """Create the main menu keyboard."""
         keyboard = [
             [KeyboardButton("📝 Show Gratitude")],
-            [KeyboardButton("📊 Statistics")],
-            [KeyboardButton("⚙️ Settings")]
+            [KeyboardButton("🔔 Reminder Settings")],
+            # [KeyboardButton("📊 Statistics")],
+            # [KeyboardButton("⚙️ Settings")]
         ]
         return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     
@@ -22,6 +23,20 @@ class KeyboardFactory:
     def create_gratitude_mode_keyboard() -> ReplyKeyboardMarkup:
         """Create the gratitude mode keyboard."""
         keyboard = [
+            [KeyboardButton("↩️ Go Back")]
+        ]
+        return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    
+    @staticmethod
+    def create_reminder_settings_keyboard(reminder_enabled: bool) -> ReplyKeyboardMarkup:
+        """Create the reminder settings keyboard."""
+        if reminder_enabled:
+            action_button = KeyboardButton("🔕 Disable Reminders")
+        else:
+            action_button = KeyboardButton("🔔 Enable Reminders")
+        
+        keyboard = [
+            [action_button],
             [KeyboardButton("↩️ Go Back")]
         ]
         return ReplyKeyboardMarkup(keyboard, resize_keyboard=True) 

@@ -40,7 +40,8 @@ class FirebaseUserRepository(UserRepository):
             'username': user.username,
             'first_name': user.first_name,
             'last_name': user.last_name,
-            'created_at': user.created_at.isoformat()
+            'created_at': user.created_at.isoformat(),
+            'reminder_enabled': user.reminder_enabled
         }
         
         # Use user_id as document ID
@@ -58,9 +59,20 @@ class FirebaseUserRepository(UserRepository):
                 username=data.get('username'),
                 first_name=data['first_name'],
                 last_name=data.get('last_name'),
-                created_at=datetime.fromisoformat(data['created_at'])
+                created_at=datetime.fromisoformat(data['created_at']),
+                reminder_enabled=data.get('reminder_enabled', False)
             )
         return None
+    
+    async def update_reminder_preference(self, user_id: int, reminder_enabled: bool) -> bool:
+        """Update user's reminder preference."""
+        try:
+            self.users_collection.document(str(user_id)).update({
+                'reminder_enabled': reminder_enabled
+            })
+            return True
+        except Exception:
+            return False
 
 
 class FirebaseGratitudeRepository(GratitudeRepository):

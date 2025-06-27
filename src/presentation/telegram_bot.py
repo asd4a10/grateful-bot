@@ -94,12 +94,30 @@ class GratefulBot:
                 "You'll be able to customize your gratitude experience here."
             )
             return
+        elif message_text == "🔔 Reminder Settings":
+            # Handle reminder settings
+            await self.handle_reminder_settings(update, context)
+            return
+        elif message_text == "🔔 Enable Reminders":
+            # Enable reminders
+            await self.handle_enable_reminders(update, context)
+            return
+        elif message_text == "🔕 Disable Reminders":
+            # Disable reminders
+            await self.handle_disable_reminders(update, context)
+            return
         elif message_text == "↩️ Go Back":
             if user_state == UserState.GRATITUDE_MODE:
-                # Return to main menu
+                # Return to main menu from gratitude mode
                 self.state_manager.set_user_state(user.id, UserState.IDLE)
                 await update.message.reply_text(
                     "Returning to main menu! 🏠",
+                    reply_markup=KeyboardFactory.create_main_menu_keyboard()
+                )
+            else:
+                # Return to main menu from any other screen
+                await update.message.reply_text(
+                    "Back to main menu! 🏠",
                     reply_markup=KeyboardFactory.create_main_menu_keyboard()
                 )
             return
@@ -137,6 +155,107 @@ class GratefulBot:
             await update.message.reply_text(
                 "Use the menu buttons for navigation! 🎯\n\n"
                 "Click '📝 Show Gratitude' to share your gratitude."
+            )
+    
+    async def handle_reminder_settings(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle reminder settings menu."""
+        user = update.effective_user
+        if not user:
+            logger.error("User not found in reminder settings")
+            return
+        
+        try:
+            # Get user's current reminder preference
+            user_entity = await self.bot_service.user_service.get_user(user.id)
+            if not user_entity:
+                await update.message.reply_text(
+                    "Error: User not found. Please use /start first.",
+                    reply_markup=KeyboardFactory.create_main_menu_keyboard()
+                )
+                return
+            
+            reminder_status = "✅ Enabled" if user_entity.reminder_enabled else "❌ Disabled"
+            
+            message = (
+                "🔔 **Reminder Settings**\n\n"
+                f"Daily reminders: {reminder_status}\n\n"
+                "Daily reminders will invite you to share your gratitude at a random time each day.\n\n"
+                "Use the buttons below to change your preference:"
+            )
+            
+            await update.message.reply_text(
+                message,
+                reply_markup=KeyboardFactory.create_reminder_settings_keyboard(user_entity.reminder_enabled),
+                parse_mode='Markdown'
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in reminder settings: {e}")
+            await update.message.reply_text(
+                "Error loading reminder settings. Please try again.",
+                reply_markup=KeyboardFactory.create_main_menu_keyboard()
+            )
+    
+    async def handle_enable_reminders(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle enabling reminders."""
+        user = update.effective_user
+        if not user:
+            return
+        
+        try:
+            success = await self.bot_service.user_service.set_reminder_preference(user.id, True)
+            
+            if success:
+                message = (
+                    "🔔 **Reminders Enabled!** ✅\n\n"
+                    "You'll now receive daily reminders to share your gratitude at a random time each day.\n\n"
+                    "You can disable them anytime from the reminder settings."
+                )
+            else:
+                message = "❌ Failed to enable reminders. Please try again."
+            
+            await update.message.reply_text(
+                message,
+                reply_markup=KeyboardFactory.create_main_menu_keyboard(),
+                parse_mode='Markdown'
+            )
+            
+        except Exception as e:
+            logger.error(f"Error enabling reminders: {e}")
+            await update.message.reply_text(
+                "Error enabling reminders. Please try again.",
+                reply_markup=KeyboardFactory.create_main_menu_keyboard()
+            )
+    
+    async def handle_disable_reminders(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle disabling reminders."""
+        user = update.effective_user
+        if not user:
+            return
+        
+        try:
+            success = await self.bot_service.user_service.set_reminder_preference(user.id, False)
+            
+            if success:
+                message = (
+                    "🔕 **Reminders Disabled** ✅\n\n"
+                    "You won't receive daily reminders anymore.\n\n"
+                    "You can enable them anytime from the reminder settings."
+                )
+            else:
+                message = "❌ Failed to disable reminders. Please try again."
+            
+            await update.message.reply_text(
+                message,
+                reply_markup=KeyboardFactory.create_main_menu_keyboard(),
+                parse_mode='Markdown'
+            )
+            
+        except Exception as e:
+            logger.error(f"Error disabling reminders: {e}")
+            await update.message.reply_text(
+                "Error disabling reminders. Please try again.",
+                reply_markup=KeyboardFactory.create_main_menu_keyboard()
             )
     
     def run(self):

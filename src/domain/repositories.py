@@ -20,6 +20,11 @@ class UserRepository(ABC):
     async def get_user(self, user_id: int) -> Optional[User]:
         """Get user by ID."""
         pass
+    
+    @abstractmethod
+    async def update_reminder_preference(self, user_id: int, reminder_enabled: bool) -> bool:
+        """Update user's reminder preference."""
+        pass
 
 
 class GratitudeRepository(ABC):

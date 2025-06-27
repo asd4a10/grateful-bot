@@ -15,6 +15,7 @@ class User:
     first_name: str
     last_name: Optional[str]
     created_at: datetime
+    reminder_enabled: bool = False  # New field for reminder subscription
 
 
 @dataclass

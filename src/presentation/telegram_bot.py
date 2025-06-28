@@ -106,6 +106,10 @@ class GratefulBot:
             # Disable reminders
             await self.handle_disable_reminders(update, context)
             return
+        elif message_text == "🕐 Today's Reminder Time":
+            # Show today's reminder time
+            await self.handle_show_reminder_time(update, context)
+            return
         elif message_text == "📅 Send Reminder Now":
             # Send test reminder with auto-enter
             await self.handle_send_reminder_now(update, context)
@@ -315,6 +319,45 @@ class GratefulBot:
             reply_markup=KeyboardFactory.create_main_menu_keyboard(),
             parse_mode='Markdown'
         )
+    
+    async def handle_show_reminder_time(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle showing today's reminder time."""
+        user = update.effective_user
+        if not user:
+            return
+        
+        try:
+            # Get today's reminder time
+            reminder_time_message = await self.bot_service.get_today_reminder_time()
+            
+            if reminder_time_message:
+                message = (
+                    f"🕐 **Today's Reminder Schedule**\n\n"
+                    f"{reminder_time_message}\n\n"
+                    "This time is randomly generated each day between 9 AM and 8 PM."
+                )
+            else:
+                message = (
+                    "🕐 **Today's Reminder Schedule**\n\n"
+                    "Unable to retrieve today's reminder time. Please try again later."
+                )
+            
+            # Get user's current reminder preference for keyboard
+            user_entity = await self.bot_service.user_service.get_user(user.id)
+            reminder_enabled = user_entity.reminder_enabled if user_entity else False
+            
+            await update.message.reply_text(
+                message,
+                reply_markup=KeyboardFactory.create_reminder_settings_keyboard(reminder_enabled),
+                parse_mode='Markdown'
+            )
+            
+        except Exception as e:
+            logger.error(f"Error showing reminder time: {e}")
+            await update.message.reply_text(
+                "Error retrieving reminder time. Please try again.",
+                reply_markup=KeyboardFactory.create_main_menu_keyboard()
+            )
     
     def run(self):
         """Start the bot."""

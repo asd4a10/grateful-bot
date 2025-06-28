@@ -3,9 +3,10 @@ Repository interfaces for the domain layer.
 """
 
 from abc import ABC, abstractmethod
+from datetime import date
 from typing import List, Optional
 
-from .entities import User, GratitudeEntry
+from .entities import User, GratitudeEntry, ReminderSchedule
 
 
 class UserRepository(ABC):
@@ -38,4 +39,28 @@ class GratitudeRepository(ABC):
     @abstractmethod
     async def get_user_entries(self, user_id: int, limit: int = 10) -> List[GratitudeEntry]:
         """Get gratitude entries for a user."""
+        pass
+
+
+class ReminderScheduleRepository(ABC):
+    """Interface for reminder schedule data operations."""
+    
+    @abstractmethod
+    async def create_schedule(self, schedule: ReminderSchedule) -> ReminderSchedule:
+        """Create a new reminder schedule."""
+        pass
+    
+    @abstractmethod
+    async def get_schedule_for_date(self, target_date: date) -> Optional[ReminderSchedule]:
+        """Get reminder schedule for a specific date."""
+        pass
+    
+    @abstractmethod
+    async def get_today_schedule(self) -> Optional[ReminderSchedule]:
+        """Get today's reminder schedule."""
+        pass
+    
+    @abstractmethod
+    async def mark_as_sent(self, schedule_id: str) -> bool:
+        """Mark reminder schedule as sent."""
         pass 

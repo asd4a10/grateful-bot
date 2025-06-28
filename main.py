@@ -7,11 +7,12 @@ import os
 from dotenv import load_dotenv
 
 from src.infrastructure.firebase import (
-    FirebaseManager, FirebaseUserRepository, FirebaseGratitudeRepository
+    FirebaseManager, FirebaseUserRepository, FirebaseGratitudeRepository, FirebaseReminderScheduleRepository
 )
 from src.application.services import (
     UserService, GratitudeService, GratefulBotService
 )
+from src.application.services.reminder_service import ReminderService
 from src.presentation.telegram_bot import GratefulBot
 
 
@@ -45,11 +46,13 @@ def setup_dependencies():
     # Initialize repositories
     user_repository = FirebaseUserRepository(firebase_manager)
     gratitude_repository = FirebaseGratitudeRepository(firebase_manager)
+    reminder_repository = FirebaseReminderScheduleRepository(firebase_manager)
     
     # Initialize services
     user_service = UserService(user_repository)
     gratitude_service = GratitudeService(gratitude_repository)
-    bot_service = GratefulBotService(user_service, gratitude_service)
+    reminder_service = ReminderService(reminder_repository)
+    bot_service = GratefulBotService(user_service, gratitude_service, reminder_service)
     
     # Initialize bot
     bot = GratefulBot(bot_token, bot_service)

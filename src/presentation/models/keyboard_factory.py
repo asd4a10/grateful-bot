@@ -37,6 +37,7 @@ class KeyboardFactory:
         
         keyboard = [
             [action_button],
+            [KeyboardButton("🕐 Today's Reminder Time")],
             [KeyboardButton("📅 Send Reminder Now")],
             [KeyboardButton("↩️ Go Back")]
         ]

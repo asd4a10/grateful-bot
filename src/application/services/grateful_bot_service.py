@@ -2,6 +2,7 @@
 Main grateful bot service containing the core business logic.
 """
 
+import random
 from typing import Tuple
 
 from src.domain.entities import User, GratitudeEntry
@@ -41,4 +42,29 @@ class GratefulBotService:
             "Have a wonderful day! ✨"
         )
         
-        return entry, message 
+        return entry, message
+    
+    async def send_reminder_message(self, user_id: int) -> str:
+        """Generate and return a reminder message for the user."""
+        # Get user info for personalization
+        user = await self.user_service.get_user(user_id)
+        if not user:
+            return "�� Time for gratitude!\n\nWhat are you thankful for today? Just type your thoughts below, or skip if you're busy right now."
+        
+        first_name = user.first_name
+        
+        # Reminder message templates optimized for auto-enter mode
+        templates = [
+            f"🌟 Hey {first_name}!\n\nTime for a gratitude moment ✨\n\nWhat made you smile today? Just type your thoughts below, or skip if you're busy right now.",
+            
+            f"💝 Hello {first_name}!\n\nYour daily gratitude reminder is here 🌈\n\nWhat brought you joy today? Share your thoughts directly, or skip for now if you prefer.",
+            
+            f"🙏 Hi {first_name}!\n\nGratitude time! 🌻\n\nWhat warmed your heart today? Type whatever comes to mind, or skip if this isn't a good moment.",
+            
+            f"✨ Good day, {first_name}!\n\nPause for a moment of gratitude 🌸\n\nWhat's something wonderful in your life right now? Just start typing, or skip if you're busy.",
+            
+            f"🌅 Hello {first_name}!\n\nTime to count your blessings! 🙏\n\nWhat made today special? Share your gratitude by typing below, or skip for now."
+        ]
+        
+        # Return a random template
+        return random.choice(templates) 

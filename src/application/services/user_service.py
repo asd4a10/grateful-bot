@@ -3,7 +3,7 @@ User service containing user-related business logic.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from src.domain.entities import User
 from src.domain.repositories import UserRepository
@@ -43,4 +43,8 @@ class UserService:
     
     async def set_reminder_preference(self, user_id: int, enabled: bool) -> bool:
         """Set user's reminder preference."""
-        return await self.user_repository.update_reminder_preference(user_id, enabled) 
+        return await self.user_repository.update_reminder_preference(user_id, enabled)
+    
+    async def get_users_with_reminders_enabled(self) -> List[User]:
+        """Get all users who have reminders enabled."""
+        return await self.user_repository.get_users_with_reminders_enabled() 

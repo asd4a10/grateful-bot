@@ -6,10 +6,10 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from typing import List, Optional
 import uuid
-from datetime import datetime
+from datetime import datetime, date, time
 
-from ..domain.entities import User, GratitudeEntry
-from ..domain.repositories import UserRepository, GratitudeRepository
+from ..domain.entities import User, GratitudeEntry, ReminderSchedule
+from ..domain.repositories import UserRepository, GratitudeRepository, ReminderScheduleRepository
 
 
 class FirebaseManager:
@@ -111,4 +111,59 @@ class FirebaseGratitudeRepository(GratitudeRepository):
                 created_at=datetime.fromisoformat(data['created_at'])
             ))
         
-        return entries 
+        return entries
+
+
+class FirebaseReminderScheduleRepository(ReminderScheduleRepository):
+    """Firebase implementation of ReminderScheduleRepository."""
+    
+    def __init__(self, firebase_manager: FirebaseManager):
+        self.firebase_manager = firebase_manager
+        self.schedules_collection = self.firebase_manager.db.collection('reminder_schedules')
+    
+    async def create_schedule(self, schedule: ReminderSchedule) -> ReminderSchedule:
+        """Create a new reminder schedule."""
+        # Use date as document ID (format: YYYY-MM-DD)
+        doc_id = schedule.date.isoformat()
+        
+        schedule_data = {
+            'id': doc_id,
+            'date': schedule.date.isoformat(),
+            'time': schedule.time.isoformat(),
+            'sent_status': schedule.sent_status,
+            'created_at': schedule.created_at.isoformat()
+        }
+        
+        self.schedules_collection.document(doc_id).set(schedule_data)
+        schedule.id = doc_id
+        return schedule
+    
+    async def get_schedule_for_date(self, target_date: date) -> Optional[ReminderSchedule]:
+        """Get reminder schedule for a specific date."""
+        doc_id = target_date.isoformat()
+        doc = self.schedules_collection.document(doc_id).get()
+        
+        if doc.exists:
+            data = doc.to_dict()
+            return ReminderSchedule(
+                date=date.fromisoformat(data['date']),
+                time=time.fromisoformat(data['time']),
+                created_at=datetime.fromisoformat(data['created_at']),
+                id=data['id'],
+                sent_status=data.get('sent_status', False)
+            )
+        return None
+    
+    async def get_today_schedule(self) -> Optional[ReminderSchedule]:
+        """Get today's reminder schedule."""
+        return await self.get_schedule_for_date(date.today())
+    
+    async def mark_as_sent(self, schedule_id: str) -> bool:
+        """Mark reminder schedule as sent."""
+        try:
+            self.schedules_collection.document(schedule_id).update({
+                'sent_status': True
+            })
+            return True
+        except Exception:
+            return False 

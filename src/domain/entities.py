@@ -3,7 +3,7 @@ Domain entities for the Grateful Bot.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, date, time
 from typing import Optional
 
 
@@ -24,4 +24,14 @@ class GratitudeEntry:
     id: Optional[str]
     user_id: int
     content: str
-    created_at: datetime 
+    created_at: datetime
+
+
+@dataclass
+class ReminderSchedule:
+    """Daily reminder schedule entity representing when reminders should be sent."""
+    id: Optional[str]
+    date: date
+    time: time
+    created_at: datetime
+    sent_status: bool = False

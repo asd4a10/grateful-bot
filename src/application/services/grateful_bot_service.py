@@ -6,15 +6,18 @@ import random
 from typing import Tuple
 
 from src.domain.entities import User, GratitudeEntry
-from src.application.services import UserService, GratitudeService
+from .user_service import UserService
+from .gratitude_service import GratitudeService
+from .reminder_service import ReminderService
 
 
 class GratefulBotService:
     """Main service for the grateful bot."""
     
-    def __init__(self, user_service: UserService, gratitude_service: GratitudeService):
+    def __init__(self, user_service: UserService, gratitude_service: GratitudeService, reminder_service: ReminderService):
         self.user_service = user_service
         self.gratitude_service = gratitude_service
+        self.reminder_service = reminder_service
     
     async def start_conversation(self, user_id: int, username: str, first_name: str, last_name: str = None) -> Tuple[User, str]:
         """Start a conversation with a user."""
@@ -44,12 +47,33 @@ class GratefulBotService:
         
         return entry, message
     
+    async def get_today_reminder_time(self) -> str:
+        """Get today's reminder time for display to users."""
+        reminder_time = await self.reminder_service.get_today_reminder_time()
+        if reminder_time:
+            # Format time for display (e.g., "2:30 PM")
+            hour = reminder_time.hour
+            minute = reminder_time.minute
+            
+            if hour == 0:
+                time_str = f"12:{minute:02d} AM"
+            elif hour < 12:
+                time_str = f"{hour}:{minute:02d} AM"
+            elif hour == 12:
+                time_str = f"12:{minute:02d} PM"
+            else:
+                time_str = f"{hour-12}:{minute:02d} PM"
+            
+            return f"Today's reminder will be sent at: {time_str}"
+        
+        return "Today's reminder time is being generated..."
+    
     async def send_reminder_message(self, user_id: int) -> str:
         """Generate and return a reminder message for the user."""
         # Get user info for personalization
         user = await self.user_service.get_user(user_id)
         if not user:
-            return "�� Time for gratitude!\n\nWhat are you thankful for today? Just type your thoughts below, or skip if you're busy right now."
+            return "🌟 Time for gratitude!\n\nWhat are you thankful for today? Just type your thoughts below, or skip if you're busy right now."
         
         first_name = user.first_name
         
@@ -67,4 +91,4 @@ class GratefulBotService:
         ]
         
         # Return a random template
-        return random.choice(templates) 
+        return random.choice(templates)

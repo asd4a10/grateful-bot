@@ -106,6 +106,14 @@ class GratefulBot:
             # Disable reminders
             await self.handle_disable_reminders(update, context)
             return
+        elif message_text == "📅 Send Reminder Now":
+            # Send test reminder with auto-enter
+            await self.handle_send_reminder_now(update, context)
+            return
+        elif message_text == "⏭️ Skip for now":
+            # Handle skip from reminder
+            await self.handle_skip_reminder(update, context)
+            return
         elif message_text == "↩️ Go Back":
             if user_state == UserState.GRATITUDE_MODE:
                 # Return to main menu from gratitude mode
@@ -257,6 +265,56 @@ class GratefulBot:
                 "Error disabling reminders. Please try again.",
                 reply_markup=KeyboardFactory.create_main_menu_keyboard()
             )
+    
+    async def handle_send_reminder_now(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle sending a test reminder with auto-enter gratitude mode."""
+        user = update.effective_user
+        if not user:
+            return
+        
+        try:
+            # Generate reminder message
+            reminder_message = await self.bot_service.send_reminder_message(user.id)
+            
+            # Auto-enter gratitude mode
+            self.state_manager.set_user_state(user.id, UserState.GRATITUDE_MODE)
+            
+            # Send the reminder message with skip keyboard
+            await update.message.reply_text(
+                reminder_message,
+                reply_markup=KeyboardFactory.create_reminder_gratitude_keyboard()
+            )
+            
+            # Send brief instruction
+            await update.message.reply_text(
+                "💡 **Ready to share!** Just start typing your gratitude, or use the skip button if you're busy.",
+                parse_mode='Markdown'
+            )
+            
+        except Exception as e:
+            logger.error(f"Error sending test reminder: {e}")
+            await update.message.reply_text(
+                "❌ Error sending test reminder. Please try again.",
+                reply_markup=KeyboardFactory.create_main_menu_keyboard()
+            )
+    
+    async def handle_skip_reminder(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle skipping a reminder."""
+        user = update.effective_user
+        if not user:
+            return
+        
+        # Reset to idle state
+        self.state_manager.set_user_state(user.id, UserState.IDLE)
+        
+        # Send encouraging message
+        await update.message.reply_text(
+            "⏭️ **No worries!** ✨\n\n"
+            "You can share your gratitude anytime using the main menu.\n\n"
+            "Have a wonderful day! 🌟",
+            reply_markup=KeyboardFactory.create_main_menu_keyboard(),
+            parse_mode='Markdown'
+        )
     
     def run(self):
         """Start the bot."""

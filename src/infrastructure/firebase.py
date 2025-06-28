@@ -73,6 +73,28 @@ class FirebaseUserRepository(UserRepository):
             return True
         except Exception:
             return False
+    
+    async def get_users_with_reminders_enabled(self) -> List[User]:
+        """Get all users who have reminders enabled."""
+        try:
+            query = self.users_collection.where('reminder_enabled', '==', True)
+            docs = query.stream()
+            
+            users = []
+            for doc in docs:
+                data = doc.to_dict()
+                users.append(User(
+                    user_id=data['user_id'],
+                    username=data.get('username'),
+                    first_name=data['first_name'],
+                    last_name=data.get('last_name'),
+                    created_at=datetime.fromisoformat(data['created_at']),
+                    reminder_enabled=data.get('reminder_enabled', False)
+                ))
+            
+            return users
+        except Exception:
+            return []
 
 
 class FirebaseGratitudeRepository(GratitudeRepository):

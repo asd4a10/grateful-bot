@@ -73,4 +73,32 @@ class ReminderService:
         """Mark reminder as sent."""
         if schedule.id:
             return await self.reminder_repository.mark_as_sent(schedule.id)
-        return False 
+        return False
+    
+    async def get_next_reminder_seconds(self, target_date: date = None) -> int:
+        """Get seconds from now until the next reminder for job scheduling."""
+        if target_date is None:
+            target_date = date.today()
+        
+        schedule = await self.get_or_create_daily_schedule(target_date)
+        reminder_datetime = datetime.combine(target_date, schedule.time)
+        
+        # Calculate seconds from now
+        now = datetime.now()
+        seconds_until_reminder = (reminder_datetime - now).total_seconds()
+        
+        # Ensure we don't schedule in the past
+        return max(1, int(seconds_until_reminder))
+    
+    async def should_schedule_reminder_for_today(self) -> bool:
+        """Check if we should schedule a reminder for today (not sent and time hasn't passed)."""
+        today_schedule = await self.reminder_repository.get_today_schedule()
+        
+        if not today_schedule or today_schedule.sent_status:
+            return False
+        
+        # Check if reminder time hasn't passed yet
+        now = datetime.now()
+        reminder_datetime = datetime.combine(date.today(), today_schedule.time)
+        
+        return now < reminder_datetime 

@@ -26,6 +26,11 @@ class UserRepository(ABC):
     async def update_reminder_preference(self, user_id: int, reminder_enabled: bool) -> bool:
         """Update user's reminder preference."""
         pass
+    
+    @abstractmethod
+    async def get_users_with_reminders_enabled(self) -> List[User]:
+        """Get all users who have reminders enabled."""
+        pass
 
 
 class GratitudeRepository(ABC):

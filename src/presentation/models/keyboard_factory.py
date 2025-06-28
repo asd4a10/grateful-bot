@@ -37,6 +37,16 @@ class KeyboardFactory:
         
         keyboard = [
             [action_button],
+            [KeyboardButton("📅 Send Reminder Now")],
+            [KeyboardButton("↩️ Go Back")]
+        ]
+        return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    
+    @staticmethod
+    def create_reminder_gratitude_keyboard() -> ReplyKeyboardMarkup:
+        """Create keyboard for reminder-triggered gratitude mode (with skip option)."""
+        keyboard = [
+            [KeyboardButton("⏭️ Skip for now")],
             [KeyboardButton("↩️ Go Back")]
         ]
         return ReplyKeyboardMarkup(keyboard, resize_keyboard=True) 

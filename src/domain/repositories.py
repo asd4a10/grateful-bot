@@ -52,30 +52,6 @@ class GratitudeRepository(ABC):
         pass
 
 
-class ReminderScheduleRepository(ABC):
-    """Interface for reminder schedule data operations."""
-    
-    @abstractmethod
-    async def create_schedule(self, schedule: ReminderSchedule) -> ReminderSchedule:
-        """Create a new reminder schedule."""
-        pass
-    
-    @abstractmethod
-    async def get_schedule_for_date(self, target_date: date) -> Optional[ReminderSchedule]:
-        """Get reminder schedule for a specific date."""
-        pass
-    
-    @abstractmethod
-    async def get_today_schedule(self) -> Optional[ReminderSchedule]:
-        """Get today's reminder schedule."""
-        pass
-    
-    @abstractmethod
-    async def mark_as_sent(self, schedule_id: str) -> bool:
-        """Mark reminder schedule as sent."""
-        pass
-
-
 class TimezoneReminderScheduleRepository(ABC):
     """Interface for timezone reminder schedule data operations."""
     

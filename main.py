@@ -10,7 +10,6 @@ from src.infrastructure.firebase import (
     FirebaseManager, 
     FirebaseUserRepository, 
     FirebaseGratitudeRepository, 
-    FirebaseReminderScheduleRepository,
     FirebaseTimezoneReminderScheduleRepository
 )
 from src.application.services import (
@@ -53,17 +52,17 @@ def setup_dependencies():
     # Initialize repositories
     user_repository = FirebaseUserRepository(firebase_manager)
     gratitude_repository = FirebaseGratitudeRepository(firebase_manager)
-    reminder_repository = FirebaseReminderScheduleRepository(firebase_manager)
-    timezone_schedule_repository = FirebaseTimezoneReminderScheduleRepository(firebase_manager)
     
     # Initialize services
     user_service = UserService(user_repository)
     gratitude_service = GratitudeService(gratitude_repository)
     timezone_service = TimezoneService()
     
-    # Enhanced ReminderService with timezone support
+    # ✅ KEEP: Only timezone-aware dependencies
+    timezone_schedule_repository = FirebaseTimezoneReminderScheduleRepository(firebase_manager)
+    
+    # ✅ SIMPLIFIED: ReminderService without legacy dependencies
     reminder_service = ReminderService(
-        reminder_repository=reminder_repository,
         timezone_schedule_repository=timezone_schedule_repository,
         user_repository=user_repository,
         timezone_service=timezone_service

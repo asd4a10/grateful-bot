@@ -48,31 +48,12 @@ class GratefulBot:
     async def _check_and_schedule_today_reminder(self, context: ContextTypes.DEFAULT_TYPE):
         """Check if we should schedule today's reminder and do it."""
         try:
-            should_schedule = await self.bot_service.reminder_service.should_schedule_reminder_for_today()
-            
-            if should_schedule:
-                reminder_service = self.bot_service.reminder_service
-                
-                if reminder_service.timezone_mode_enabled:
-                    # ✅ TIMEZONE MODE: Schedule multiple timezone jobs
-                    await self._schedule_timezone_aware_reminders_for_today()
-                else:
-                    # ✅ LEGACY MODE: Schedule single job
-                    seconds_until_reminder = await reminder_service.get_next_reminder_seconds()
-                    
-                    self.application.job_queue.run_once(
-                        self._send_daily_reminders,
-                        when=seconds_until_reminder
-                    )
-                    
-                    target_time = datetime.now() + timedelta(seconds=seconds_until_reminder)
-                    logger.info(f"Scheduled today's reminder in {seconds_until_reminder} seconds (at {target_time})")
-            else:
-                # Today's reminder already sent or time passed, schedule tomorrow's
-                await self._schedule_tomorrow_reminder()
+            # ✅ Schedule timezone-aware reminders only
+            await self._schedule_timezone_aware_reminders_for_today()
                 
         except Exception as e:
             logger.error(f"Error checking today's reminder schedule: {e}")
+
     
     async def _schedule_timezone_aware_reminders_for_today(self):
         """Schedule timezone-aware reminders for today."""
@@ -100,13 +81,13 @@ class GratefulBot:
                 # Calculate seconds until this timezone's reminder
                 seconds_until_reminder = (schedule.utc_time - now).total_seconds()
                 
-                # Schedule job with timezone context
+                # ✅ FIX: Pass both timezone and date in data
                 self.application.job_queue.run_once(
                     self._send_daily_reminders,
                     when=int(seconds_until_reminder),
                     data={
                         'timezone': schedule.timezone,
-                        'schedule_id': schedule.id
+                        'date': schedule.date  # ✅ Convert date to string
                     }
                 )
                 
@@ -115,33 +96,31 @@ class GratefulBot:
             
             if jobs_scheduled == 0:
                 logger.info("No timezone jobs scheduled - all times have passed or already sent")
-                await self._schedule_tomorrow_reminder()
-            else:
-                logger.info(f"Scheduled {jobs_scheduled} timezone reminder jobs for today")
+            
+            # Always schedule tomorrow's reminders
+            await self._schedule_tomorrow_reminder()
         
         except Exception as e:
             logger.error(f"Error scheduling timezone-aware reminders: {e}")
+            await self._schedule_tomorrow_reminder()
     
     async def _send_daily_reminders(self, context: ContextTypes.DEFAULT_TYPE):
-        """Send daily reminders to all users with reminders enabled."""
+        """Send daily reminders to users in specific timezone."""
         try:
-            logger.info("Starting daily reminder job...")
+            timezone = context.job.data['timezone']
+            target_date = context.job.data['date']
             
-            # Get all users with reminders enabled
-            users = await self.bot_service.user_service.get_users_with_reminders_enabled()
+            logger.info(f"Sending timezone reminder for {timezone} on {target_date}")
+            
+            # Get users for this timezone and date
+            users = await self.bot_service.reminder_service.get_users_for_timezone_reminder(timezone, target_date)
             
             if not users:
-                logger.info("No users with reminders enabled")
-                await self._schedule_tomorrow_reminder()
+                logger.info(f"No users found for timezone {timezone} reminder")
                 return
             
-            # Mark today's reminder as sent first to prevent duplicates
-            today_schedule = await self.bot_service.reminder_service.reminder_repository.get_today_schedule()
-            if today_schedule:
-                await self.bot_service.reminder_service.mark_reminder_as_sent(today_schedule)
-            
-            # Send reminders to all eligible users
-            successful_sends = 0
+            # Send reminders to all users
+            sent_count = 0
             for user in users:
                 try:
                     # Generate personalized reminder message
@@ -157,16 +136,20 @@ class GratefulBot:
                         reply_markup=KeyboardFactory.create_reminder_gratitude_keyboard()
                     )
                     
-                    successful_sends += 1
+                    sent_count += 1
                     logger.info(f"Sent reminder to user {user.user_id} ({user.first_name})")
                     
                 except Exception as e:
                     logger.error(f"Failed to send reminder to user {user.user_id}: {e}")
             
-            logger.info(f"Daily reminder job completed. Sent {successful_sends}/{len(users)} reminders")
+            # Mark timezone reminder as sent
+            await self.bot_service.reminder_service.mark_timezone_reminder_as_sent(timezone, target_date, sent_count)
             
-            # Schedule tomorrow's reminder
-            await self._schedule_tomorrow_reminder()
+            logger.info(f"Sent {sent_count} timezone reminders for {timezone}")
+            
+        except Exception as e:
+            logger.error(f"Error in timezone reminder job: {e}")
+
             
         except Exception as e:
             logger.error(f"Error in daily reminder job: {e}")
@@ -179,20 +162,23 @@ class GratefulBot:
     async def _schedule_tomorrow_reminder(self):
         """Schedule tomorrow's reminder."""
         try:
-            tomorrow = date.today() + timedelta(days=1)
-            seconds_until_reminder = await self.bot_service.reminder_service.get_next_reminder_seconds(tomorrow)
+            # ✅ Calculate tomorrow at midnight for setup
+            now = datetime.now()
+            tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
             
+            # Schedule job to setup tomorrow's reminders
             self.application.job_queue.run_once(
-                self._send_daily_reminders,
-                when=seconds_until_reminder
+                self._check_and_schedule_today_reminder,
+                when=tomorrow,
+                name="setup_tomorrow_reminders"
             )
             
-            # Calculate target time for logging
-            target_time = datetime.now() + timedelta(seconds=seconds_until_reminder)
-            logger.info(f"Scheduled tomorrow's reminder in {seconds_until_reminder} seconds (at {target_time})")
+            seconds_until_tomorrow = (tomorrow - now).total_seconds()
+            logger.info(f"Scheduled tomorrow's reminder setup in {int(seconds_until_tomorrow)} seconds (at {tomorrow})")
             
         except Exception as e:
             logger.error(f"Error scheduling tomorrow's reminder: {e}")
+
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command."""

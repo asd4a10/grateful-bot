@@ -51,23 +51,76 @@ class GratefulBot:
             should_schedule = await self.bot_service.reminder_service.should_schedule_reminder_for_today()
             
             if should_schedule:
-                # Schedule today's reminder using seconds from now
-                seconds_until_reminder = await self.bot_service.reminder_service.get_next_reminder_seconds()
+                reminder_service = self.bot_service.reminder_service
                 
-                self.application.job_queue.run_once(
-                    self._send_daily_reminders,
-                    when=seconds_until_reminder
-                )
-                
-                # Calculate target time for logging
-                target_time = datetime.now() + timedelta(seconds=seconds_until_reminder)
-                logger.info(f"Scheduled today's reminder in {seconds_until_reminder} seconds (at {target_time})")
+                if reminder_service.timezone_mode_enabled:
+                    # ✅ TIMEZONE MODE: Schedule multiple timezone jobs
+                    await self._schedule_timezone_aware_reminders_for_today()
+                else:
+                    # ✅ LEGACY MODE: Schedule single job
+                    seconds_until_reminder = await reminder_service.get_next_reminder_seconds()
+                    
+                    self.application.job_queue.run_once(
+                        self._send_daily_reminders,
+                        when=seconds_until_reminder
+                    )
+                    
+                    target_time = datetime.now() + timedelta(seconds=seconds_until_reminder)
+                    logger.info(f"Scheduled today's reminder in {seconds_until_reminder} seconds (at {target_time})")
             else:
                 # Today's reminder already sent or time passed, schedule tomorrow's
                 await self._schedule_tomorrow_reminder()
                 
         except Exception as e:
             logger.error(f"Error checking today's reminder schedule: {e}")
+    
+    async def _schedule_timezone_aware_reminders_for_today(self):
+        """Schedule timezone-aware reminders for today."""
+        try:
+            # Get or create today's timezone schedules
+            schedules = await self.bot_service.reminder_service.schedule_timezone_aware_reminders()
+            
+            if not schedules:
+                logger.info("No timezone schedules created - no users with reminders enabled")
+                await self._schedule_tomorrow_reminder()
+                return
+            
+            # Schedule a job for each timezone
+            jobs_scheduled = 0
+            now = datetime.utcnow()
+            
+            for schedule in schedules:
+                if schedule.sent_status:
+                    continue  # Skip already sent
+                
+                if schedule.utc_time <= now:
+                    logger.warning(f"Schedule time {schedule.utc_time} has already passed for timezone {schedule.timezone}")
+                    continue
+                
+                # Calculate seconds until this timezone's reminder
+                seconds_until_reminder = (schedule.utc_time - now).total_seconds()
+                
+                # Schedule job with timezone context
+                self.application.job_queue.run_once(
+                    self._send_daily_reminders,
+                    when=int(seconds_until_reminder),
+                    data={
+                        'timezone': schedule.timezone,
+                        'schedule_id': schedule.id
+                    }
+                )
+                
+                jobs_scheduled += 1
+                logger.info(f"Scheduled timezone reminder for {schedule.timezone} in {int(seconds_until_reminder)} seconds (at {schedule.utc_time})")
+            
+            if jobs_scheduled == 0:
+                logger.info("No timezone jobs scheduled - all times have passed or already sent")
+                await self._schedule_tomorrow_reminder()
+            else:
+                logger.info(f"Scheduled {jobs_scheduled} timezone reminder jobs for today")
+        
+        except Exception as e:
+            logger.error(f"Error scheduling timezone-aware reminders: {e}")
     
     async def _send_daily_reminders(self, context: ContextTypes.DEFAULT_TYPE):
         """Send daily reminders to all users with reminders enabled."""

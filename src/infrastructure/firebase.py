@@ -7,10 +7,17 @@ from firebase_admin import credentials, firestore
 from typing import List, Optional
 import uuid
 from datetime import datetime, date, time
+import logging
 
 from ..domain.entities import User, GratitudeEntry, ReminderSchedule, TimezoneReminderSchedule
-from ..domain.repositories import UserRepository, GratitudeRepository, ReminderScheduleRepository, TimezoneReminderScheduleRepository
+from ..domain.repositories import (
+    UserRepository, 
+    GratitudeRepository, 
+    ReminderScheduleRepository,
+    TimezoneReminderScheduleRepository
+)
 
+logger = logging.getLogger(__name__)
 
 class FirebaseManager:
     """Manages Firebase database connections and operations."""
@@ -79,7 +86,11 @@ class FirebaseUserRepository(UserRepository):
     async def get_users_with_reminders_enabled(self) -> List[User]:
         """Get all users who have reminders enabled."""
         try:
-            query = self.users_collection.where('reminder_enabled', '==', True)
+            from google.cloud.firestore_v1 import FieldFilter
+            
+            query = self.users_collection.where(
+                filter=FieldFilter('reminder_enabled', '==', True)
+            )
             docs = query.stream()
             
             users = []
@@ -96,8 +107,28 @@ class FirebaseUserRepository(UserRepository):
                 ))
             
             return users
-        except Exception:
-            return []
+        except Exception as e:
+            # Fallback to old syntax if new one fails
+            try:
+                query = self.users_collection.where('reminder_enabled', '==', True)
+                docs = query.stream()
+                
+                users = []
+                for doc in docs:
+                    data = doc.to_dict()
+                    users.append(User(
+                        user_id=data['user_id'],
+                        username=data.get('username'),
+                        first_name=data['first_name'],
+                        last_name=data.get('last_name'),
+                        created_at=datetime.fromisoformat(data['created_at']),
+                        reminder_enabled=data.get('reminder_enabled', False),
+                        timezone=data.get('timezone')
+                    ))
+                
+                return users
+            except Exception:
+                return []
     
     async def update_user_timezone(self, user_id: int, timezone: Optional[str]) -> bool:
         """Update user's timezone."""
@@ -243,8 +274,17 @@ class FirebaseTimezoneReminderScheduleRepository(TimezoneReminderScheduleReposit
     
     async def get_schedules_for_date(self, target_date: date) -> List[TimezoneReminderSchedule]:
         """Get all timezone schedules for a specific date."""
-        query = self.schedules_collection.where('date', '==', target_date.isoformat())
-        docs = query.stream()
+        try:
+            from google.cloud.firestore_v1 import FieldFilter
+            
+            query = self.schedules_collection.where(
+                filter=FieldFilter('date', '==', target_date.isoformat())
+            )
+            docs = query.stream()
+        except ImportError:
+            # Fallback to old syntax
+            query = self.schedules_collection.where('date', '==', target_date.isoformat())
+            docs = query.stream()
         
         schedules = []
         for doc in docs:
@@ -260,13 +300,18 @@ class FirebaseTimezoneReminderScheduleRepository(TimezoneReminderScheduleReposit
     async def mark_as_sent(self, schedule_id: str, users_sent: int) -> bool:
         """Mark timezone schedule as sent with count."""
         try:
+            logger.info(f"Firebase: Updating schedule {schedule_id} - sent_status=True, users_sent={users_sent}")
+            
             self.schedules_collection.document(schedule_id).update({
                 'sent_status': True,
                 'users_sent': users_sent,
                 'sent_at': datetime.utcnow().isoformat()
             })
+            
+            logger.info(f"Firebase: Successfully updated schedule {schedule_id}")
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Firebase: Error updating schedule {schedule_id}: {e}")
             return False
     
     def _doc_to_schedule(self, data: dict) -> TimezoneReminderSchedule:

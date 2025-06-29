@@ -8,8 +8,8 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, date, time
 
-from ..domain.entities import User, GratitudeEntry, ReminderSchedule
-from ..domain.repositories import UserRepository, GratitudeRepository, ReminderScheduleRepository
+from ..domain.entities import User, GratitudeEntry, ReminderSchedule, TimezoneReminderSchedule
+from ..domain.repositories import UserRepository, GratitudeRepository, ReminderScheduleRepository, TimezoneReminderScheduleRepository
 
 
 class FirebaseManager:
@@ -41,7 +41,8 @@ class FirebaseUserRepository(UserRepository):
             'first_name': user.first_name,
             'last_name': user.last_name,
             'created_at': user.created_at.isoformat(),
-            'reminder_enabled': user.reminder_enabled
+            'reminder_enabled': user.reminder_enabled,
+            'timezone': user.timezone
         }
         
         # Use user_id as document ID
@@ -60,7 +61,8 @@ class FirebaseUserRepository(UserRepository):
                 first_name=data['first_name'],
                 last_name=data.get('last_name'),
                 created_at=datetime.fromisoformat(data['created_at']),
-                reminder_enabled=data.get('reminder_enabled', False)
+                reminder_enabled=data.get('reminder_enabled', False),
+                timezone=data.get('timezone')
             )
         return None
     
@@ -89,12 +91,23 @@ class FirebaseUserRepository(UserRepository):
                     first_name=data['first_name'],
                     last_name=data.get('last_name'),
                     created_at=datetime.fromisoformat(data['created_at']),
-                    reminder_enabled=data.get('reminder_enabled', False)
+                    reminder_enabled=data.get('reminder_enabled', False),
+                    timezone=data.get('timezone')
                 ))
             
             return users
         except Exception:
             return []
+    
+    async def update_user_timezone(self, user_id: int, timezone: Optional[str]) -> bool:
+        """Update user's timezone."""
+        try:
+            self.users_collection.document(str(user_id)).update({
+                'timezone': timezone
+            })
+            return True
+        except Exception:
+            return False
 
 
 class FirebaseGratitudeRepository(GratitudeRepository):
@@ -188,4 +201,84 @@ class FirebaseReminderScheduleRepository(ReminderScheduleRepository):
             })
             return True
         except Exception:
-            return False 
+            return False
+
+
+class FirebaseTimezoneReminderScheduleRepository(TimezoneReminderScheduleRepository):
+    """Firebase implementation of TimezoneReminderScheduleRepository."""
+    
+    def __init__(self, firebase_manager: FirebaseManager):
+        self.firebase_manager = firebase_manager
+        self.schedules_collection = self.firebase_manager.db.collection('timezone_reminder_schedules')
+    
+    async def create_schedule(self, schedule: TimezoneReminderSchedule) -> TimezoneReminderSchedule:
+        """Create a new timezone reminder schedule."""
+        # Document ID: date_timezone (e.g., "2024-01-15_Europe_Moscow")
+        doc_id = f"{schedule.date.isoformat()}_{schedule.timezone.replace('/', '_')}"
+        
+        schedule_data = {
+            'id': doc_id,
+            'date': schedule.date.isoformat(),
+            'timezone': schedule.timezone,
+            'base_time': schedule.base_time.isoformat(),
+            'utc_time': schedule.utc_time.isoformat(),
+            'sent_status': schedule.sent_status,
+            'users_count': schedule.users_count,
+            'users_sent': schedule.users_sent,
+            'created_at': schedule.created_at.isoformat()
+        }
+        
+        self.schedules_collection.document(doc_id).set(schedule_data)
+        schedule.id = doc_id
+        return schedule
+    
+    async def get_schedule(self, schedule_id: str) -> Optional[TimezoneReminderSchedule]:
+        """Get schedule by ID."""
+        doc = self.schedules_collection.document(schedule_id).get()
+        
+        if doc.exists:
+            data = doc.to_dict()
+            return self._doc_to_schedule(data)
+        return None
+    
+    async def get_schedules_for_date(self, target_date: date) -> List[TimezoneReminderSchedule]:
+        """Get all timezone schedules for a specific date."""
+        query = self.schedules_collection.where('date', '==', target_date.isoformat())
+        docs = query.stream()
+        
+        schedules = []
+        for doc in docs:
+            data = doc.to_dict()
+            schedules.append(self._doc_to_schedule(data))
+        
+        return schedules
+    
+    async def get_today_schedules(self) -> List[TimezoneReminderSchedule]:
+        """Get all timezone schedules for today."""
+        return await self.get_schedules_for_date(date.today())
+    
+    async def mark_as_sent(self, schedule_id: str, users_sent: int) -> bool:
+        """Mark timezone schedule as sent with count."""
+        try:
+            self.schedules_collection.document(schedule_id).update({
+                'sent_status': True,
+                'users_sent': users_sent,
+                'sent_at': datetime.utcnow().isoformat()
+            })
+            return True
+        except Exception:
+            return False
+    
+    def _doc_to_schedule(self, data: dict) -> TimezoneReminderSchedule:
+        """Convert Firestore document to TimezoneReminderSchedule."""
+        return TimezoneReminderSchedule(
+            id=data['id'],
+            date=date.fromisoformat(data['date']),
+            timezone=data['timezone'],
+            base_time=time.fromisoformat(data['base_time']),
+            utc_time=datetime.fromisoformat(data['utc_time']),
+            sent_status=data.get('sent_status', False),
+            users_count=data.get('users_count', 0),
+            users_sent=data.get('users_sent', 0),
+            created_at=datetime.fromisoformat(data['created_at'])
+        ) 

@@ -127,9 +127,18 @@ class ReminderService:
     async def mark_timezone_reminder_as_sent(self, schedule_id: str, users_sent: int) -> bool:
         """Mark timezone reminder as sent with count."""
         if not self.timezone_mode_enabled:
+            logger.warning("Timezone mode not enabled - cannot mark timezone reminder as sent")
             return False
         
-        return await self.timezone_schedule_repository.mark_as_sent(schedule_id, users_sent)
+        logger.info(f"Marking timezone reminder as sent: schedule_id={schedule_id}, users_sent={users_sent}")
+        
+        try:
+            result = await self.timezone_schedule_repository.mark_as_sent(schedule_id, users_sent)
+            logger.info(f"Mark as sent result: {result}")
+            return result
+        except Exception as e:
+            logger.error(f"Error marking timezone reminder as sent: {e}")
+            return False
     
     async def get_timezone_reminder_schedule(self, schedule_id: str) -> Optional[TimezoneReminderSchedule]:
         """Get timezone reminder schedule by ID."""
@@ -209,9 +218,25 @@ class ReminderService:
     async def should_schedule_reminder_for_today(self) -> bool:
         """Check if we should schedule a reminder for today."""
         if self.timezone_mode_enabled:
-            return await self.should_schedule_timezone_reminders_for_today()
+            # ✅ TIMEZONE MODE: Check if schedules exist AND if any are still pending
+            today_schedules = await self.timezone_schedule_repository.get_today_schedules()
+            
+            if not today_schedules:
+                # No schedules exist - need to create them
+                return True
+            
+            # Schedules exist - check if any are still pending and time hasn't passed
+            now = datetime.utcnow()
+            
+            for schedule in today_schedules:
+                if not schedule.sent_status and schedule.utc_time > now:
+                    # Found a pending schedule with future time - should schedule
+                    return True
+            
+            # All schedules are either sent or time has passed
+            return False
         else:
-            # Legacy mode
+            # Legacy mode (unchanged)
             today_schedule = await self.reminder_repository.get_today_schedule()
             
             if not today_schedule or today_schedule.sent_status:

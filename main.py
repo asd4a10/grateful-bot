@@ -7,10 +7,17 @@ import os
 from dotenv import load_dotenv
 
 from src.infrastructure.firebase import (
-    FirebaseManager, FirebaseUserRepository, FirebaseGratitudeRepository, FirebaseReminderScheduleRepository
+    FirebaseManager, 
+    FirebaseUserRepository, 
+    FirebaseGratitudeRepository, 
+    FirebaseReminderScheduleRepository,
+    FirebaseTimezoneReminderScheduleRepository
 )
 from src.application.services import (
-    UserService, GratitudeService, GratefulBotService
+    UserService, 
+    GratitudeService, 
+    GratefulBotService,
+    TimezoneService
 )
 from src.application.services.reminder_service import ReminderService
 from src.presentation.telegram_bot import GratefulBot
@@ -47,11 +54,26 @@ def setup_dependencies():
     user_repository = FirebaseUserRepository(firebase_manager)
     gratitude_repository = FirebaseGratitudeRepository(firebase_manager)
     reminder_repository = FirebaseReminderScheduleRepository(firebase_manager)
+    timezone_schedule_repository = FirebaseTimezoneReminderScheduleRepository(firebase_manager)
     
     # Initialize services
     user_service = UserService(user_repository)
     gratitude_service = GratitudeService(gratitude_repository)
-    reminder_service = ReminderService(reminder_repository)
+    timezone_service = TimezoneService()
+    
+    # Enhanced ReminderService with timezone support
+    reminder_service = ReminderService(
+        reminder_repository=reminder_repository,
+        timezone_schedule_repository=timezone_schedule_repository,
+        user_repository=user_repository,
+        timezone_service=timezone_service
+    )
+    
+    # Log service mode
+    mode_info = reminder_service.get_mode_info()
+    logger.info(f"ReminderService initialized: {mode_info}")
+    
+    # Initialize main bot service
     bot_service = GratefulBotService(user_service, gratitude_service, reminder_service)
     
     # Initialize bot

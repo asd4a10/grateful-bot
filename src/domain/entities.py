@@ -41,7 +41,6 @@ class ReminderSchedule:
 @dataclass
 class TimezoneReminderSchedule:
     """Timezone-specific reminder schedule entity."""
-    id: Optional[str]
     date: date
     timezone: str                 # "Europe/Moscow", "UTC", etc.
     base_time: time              # Same time for all users (e.g., 14:30)
@@ -50,3 +49,4 @@ class TimezoneReminderSchedule:
     users_count: int = 0         # Number of users in this timezone
     users_sent: int = 0          # Actually sent count
     created_at: datetime = field(default_factory=datetime.now)
+    id: Optional[str] = None     # ✅ Move id to the end and make it optional by default

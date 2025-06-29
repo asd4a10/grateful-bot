@@ -149,15 +149,6 @@ class GratefulBot:
             
         except Exception as e:
             logger.error(f"Error in timezone reminder job: {e}")
-
-            
-        except Exception as e:
-            logger.error(f"Error in daily reminder job: {e}")
-            # Still try to schedule tomorrow's reminder even if today failed
-            try:
-                await self._schedule_tomorrow_reminder()
-            except Exception as schedule_error:
-                logger.error(f"Failed to schedule tomorrow's reminder: {schedule_error}")
     
     async def _schedule_tomorrow_reminder(self):
         """Schedule tomorrow's reminder."""

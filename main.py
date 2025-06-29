@@ -38,16 +38,16 @@ def setup_dependencies():
     
     # Get configuration
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-    firebase_credentials_path = os.getenv('FIREBASE_CREDENTIALS_PATH')
+    firebase_credentials_base64 = os.getenv('FIREBASE_CREDS_BASE64')
     
     if not bot_token:
         raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required")
     
-    if not firebase_credentials_path:
-        raise ValueError("FIREBASE_CREDENTIALS_PATH environment variable is required")
+    if not firebase_credentials_base64:
+        raise ValueError("FIREBASE_CREDENTIALS_BASE64 environment variable is required")
     
     # Initialize Firebase
-    firebase_manager = FirebaseManager(firebase_credentials_path)
+    firebase_manager = FirebaseManager(firebase_credentials_base64)
     
     # Initialize repositories
     user_repository = FirebaseUserRepository(firebase_manager)

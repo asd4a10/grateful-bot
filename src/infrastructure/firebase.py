@@ -9,6 +9,9 @@ import uuid
 from datetime import datetime, date, time
 import logging
 
+import json
+import base64
+
 from ..domain.entities import User, GratitudeEntry, TimezoneReminderSchedule
 from ..domain.repositories import (
     UserRepository, 
@@ -21,13 +24,15 @@ logger = logging.getLogger(__name__)
 class FirebaseManager:
     """Manages Firebase database connections and operations."""
     
-    def __init__(self, credentials_path: str):
-        self.credentials_path = credentials_path
+    def __init__(self, credentials_base64: str):
+        self.credentials_base64 = credentials_base64
         self._init_firebase()
     
     def _init_firebase(self):
         """Initialize Firebase connection."""
-        cred = credentials.Certificate(self.credentials_path)
+        # Decode base64 credentials
+        firebase_creds = json.loads(base64.b64decode(self.credentials_base64))
+        cred = credentials.Certificate(firebase_creds)
         firebase_admin.initialize_app(cred)
         self.db = firestore.client()
 

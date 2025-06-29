@@ -2,11 +2,14 @@
 User service containing user-related business logic.
 """
 
+import logging
 from datetime import datetime
 from typing import Optional, List
 
 from src.domain.entities import User
 from src.domain.repositories import UserRepository
+
+logger = logging.getLogger(__name__)
 
 
 class UserService:
@@ -52,9 +55,14 @@ class UserService:
     
     # ✅ NEW TIMEZONE METHODS
     
-    async def update_user_timezone(self, user_id: int, timezone: Optional[str]) -> bool:
+    async def update_user_timezone(self, user_id: int, timezone: str) -> bool:
         """Update user's timezone."""
-        return await self.user_repository.update_user_timezone(user_id, timezone)
+        try:
+            logger.info(f"Updating timezone for user {user_id} to {timezone}")
+            return await self.user_repository.update_user_timezone(user_id, timezone)
+        except Exception as e:
+            logger.error(f"Error updating timezone for user {user_id}: {e}")
+            return False
     
     async def get_user_timezone(self, user_id: int) -> Optional[str]:
         """Get user's timezone."""

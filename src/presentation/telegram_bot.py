@@ -245,6 +245,12 @@ class GratefulBot:
             # Disable reminders
             await self.handle_disable_reminders(update, context)
             return
+        elif message_text == "🌍 Change Timezone":                    # ✅ NEW
+            await self.handle_change_timezone(update, context)
+            return
+        elif message_text in ["🇬🇧 London (UTC+0)", "🇵🇱 Warsaw (UTC+1)", "🇰🇿 Astana (UTC+6)"]:  # ✅ NEW
+            await self.handle_timezone_selection(update, context)
+            return
         elif message_text == "🕐 Today's Reminder Time":
             # Show today's reminder time
             await self.handle_show_reminder_time(update, context)
@@ -497,6 +503,77 @@ class GratefulBot:
                 "Error retrieving reminder time. Please try again.",
                 reply_markup=KeyboardFactory.create_main_menu_keyboard()
             )
+            
+    async def handle_change_timezone(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle timezone change request."""
+        user_id = update.effective_user.id
+        
+        try:
+            # Get current user timezone
+            user = await self.bot_service.user_service.get_user(user_id)
+            
+            if user and user.timezone:
+                timezone_display = self.bot_service.reminder_service.timezone_service.get_timezone_display_name(user.timezone)
+                current_tz_text = f"Your current timezone: {timezone_display}"
+            else:
+                current_tz_text = "Your current timezone: Not selected (using UTC default)"
+            
+            message = (
+                f"🌍 **Change Timezone**\n\n"
+                f"{current_tz_text}\n\n"
+                f"Select your timezone:"
+            )
+            
+            keyboard = KeyboardFactory.create_timezone_selection_keyboard()
+            await update.message.reply_text(message, reply_markup=keyboard, parse_mode='Markdown')
+            
+        except Exception as e:
+            logger.error(f"Error handling timezone change for user {user_id}: {e}")
+            await update.message.reply_text("Sorry, there was an error. Please try again.")
+
+    async def handle_timezone_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle timezone selection from buttons."""
+        user_id = update.effective_user.id
+        button_text = update.message.text.strip()
+        
+        try:
+            # Get timezone from button text
+            timezone_service = self.bot_service.reminder_service.timezone_service
+            timezone = timezone_service.get_timezone_from_button_text(button_text)
+            
+            if not timezone:
+                await update.message.reply_text("Invalid timezone selection. Please try again.")
+                return
+            
+            # Update user timezone
+            success = await self.bot_service.user_service.update_user_timezone(user_id, timezone)
+            
+            if success:
+                # Success message
+                message = (
+                    f"✅ **Timezone Updated!**\n\n"
+                    f"Your timezone: {button_text}\n\n"
+                    f"Your daily reminders will now be sent at the correct local time for your timezone."
+                )
+                
+                # Get current reminder status to show correct keyboard
+                user = await self.bot_service.user_service.get_user(user_id)
+                reminder_enabled = user.reminder_enabled if user else False
+                
+                # Return to reminder settings
+                keyboard = KeyboardFactory.create_reminder_settings_keyboard(enabled=reminder_enabled)
+                await update.message.reply_text(message, reply_markup=keyboard, parse_mode='Markdown')
+                
+            else:
+                await update.message.reply_text(
+                    "❌ Failed to update timezone. Please try again.",
+                    reply_markup=KeyboardFactory.create_timezone_selection_keyboard()
+                )
+            
+        except Exception as e:
+            logger.error(f"Error handling timezone selection for user {user_id}: {e}")
+            await update.message.reply_text("Sorry, there was an error. Please try again.")
+
     
     def run(self):
         """Start the bot."""

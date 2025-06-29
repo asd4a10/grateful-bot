@@ -31,6 +31,17 @@ class TimezoneService:
         'Asia/Kolkata': 'Mumbai (UTC+5:30)',
     }
     
+    # ✅ NEW: Timezone mapping for UI buttons
+    TIMEZONE_OPTIONS = {
+        "🇬🇧 London (UTC+0)": "Europe/London",
+        "🇵🇱 Warsaw (UTC+1)": "Europe/Warsaw", 
+        "🇰🇿 Astana (UTC+6)": "Asia/Almaty"  # Astana uses same timezone as Almaty
+    }
+    
+    def __init__(self):
+        """Initialize timezone service."""
+        pass
+    
     def validate_timezone(self, timezone_str: Optional[str]) -> bool:
         """Validate if timezone is supported."""
         if not timezone_str:
@@ -75,11 +86,15 @@ class TimezoneService:
         
         return timezone_groups
     
-    def get_timezone_display_name(self, timezone_str: Optional[str]) -> str:
-        """Get human-readable timezone name."""
-        if not timezone_str:
-            return 'UTC'
-        return self.SUPPORTED_TIMEZONES.get(timezone_str, timezone_str)
+    def get_timezone_from_button_text(self, button_text: str) -> Optional[str]:
+        """Get IANA timezone from button text."""
+        return self.TIMEZONE_OPTIONS.get(button_text)
+    
+    def get_timezone_display_name(self, timezone: str) -> str:
+        """Get display name for timezone."""
+        # Reverse mapping: IANA timezone -> display name
+        reverse_mapping = {v: k for k, v in self.TIMEZONE_OPTIONS.items()}
+        return reverse_mapping.get(timezone, timezone)
     
     def get_supported_timezones_list(self) -> List[tuple]:
         """Get list of supported timezones as (code, display_name) tuples."""

@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from datetime import date
 from typing import List, Optional
 
-from .entities import User, GratitudeEntry, ReminderSchedule
+from .entities import User, GratitudeEntry, ReminderSchedule, TimezoneReminderSchedule
 
 
 class UserRepository(ABC):
@@ -30,6 +30,11 @@ class UserRepository(ABC):
     @abstractmethod
     async def get_users_with_reminders_enabled(self) -> List[User]:
         """Get all users who have reminders enabled."""
+        pass
+    
+    @abstractmethod
+    async def update_user_timezone(self, user_id: int, timezone: Optional[str]) -> bool:
+        """Update user's timezone."""
         pass
 
 
@@ -68,4 +73,33 @@ class ReminderScheduleRepository(ABC):
     @abstractmethod
     async def mark_as_sent(self, schedule_id: str) -> bool:
         """Mark reminder schedule as sent."""
+        pass
+
+
+class TimezoneReminderScheduleRepository(ABC):
+    """Interface for timezone reminder schedule data operations."""
+    
+    @abstractmethod
+    async def create_schedule(self, schedule: TimezoneReminderSchedule) -> TimezoneReminderSchedule:
+        """Create a new timezone reminder schedule."""
+        pass
+    
+    @abstractmethod
+    async def get_schedule(self, schedule_id: str) -> Optional[TimezoneReminderSchedule]:
+        """Get schedule by ID."""
+        pass
+    
+    @abstractmethod
+    async def get_schedules_for_date(self, target_date: date) -> List[TimezoneReminderSchedule]:
+        """Get all timezone schedules for a specific date."""
+        pass
+    
+    @abstractmethod
+    async def get_today_schedules(self) -> List[TimezoneReminderSchedule]:
+        """Get all timezone schedules for today."""
+        pass
+    
+    @abstractmethod
+    async def mark_as_sent(self, schedule_id: str, users_sent: int) -> bool:
+        """Mark timezone schedule as sent with count."""
         pass 

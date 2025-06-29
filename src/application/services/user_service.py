@@ -23,7 +23,8 @@ class UserService:
             first_name=first_name,
             last_name=last_name,
             created_at=datetime.now(),
-            reminder_enabled=False  # Default to disabled
+            reminder_enabled=False,  # Default to disabled
+            timezone=None  # ✅ Default timezone to None
         )
         return await self.user_repository.create_user(user)
     
@@ -47,4 +48,15 @@ class UserService:
     
     async def get_users_with_reminders_enabled(self) -> List[User]:
         """Get all users who have reminders enabled."""
-        return await self.user_repository.get_users_with_reminders_enabled() 
+        return await self.user_repository.get_users_with_reminders_enabled()
+    
+    # ✅ NEW TIMEZONE METHODS
+    
+    async def update_user_timezone(self, user_id: int, timezone: Optional[str]) -> bool:
+        """Update user's timezone."""
+        return await self.user_repository.update_user_timezone(user_id, timezone)
+    
+    async def get_user_timezone(self, user_id: int) -> Optional[str]:
+        """Get user's timezone."""
+        user = await self.get_user(user_id)
+        return user.timezone if user else None 
